@@ -1,8 +1,15 @@
-import keyboard
+from pynput import keyboard
 
-run = True
-def action_clavier(event):
-    global run
-    if event.name == 'q':
-        run = False
-        
+def action_clavier(key):
+    try:
+        if key.char == 'q':
+            print("teste ")
+            return False  # 
+    except AttributeError:
+        pass  
+
+    print("teste 2")
+
+with keyboard.Listener(on_press=action_clavier) as listener:
+    listener.join()
+
