@@ -12,4 +12,3 @@ def action_clavier(key):
 
 with keyboard.Listener(on_press=action_clavier) as listener:
     listener.join()
-
