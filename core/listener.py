@@ -85,5 +85,3 @@ class KeyLogger:
 if __name__ == "__main__":
     logger = KeyLogger()
     logger.start()
-
-#teste
