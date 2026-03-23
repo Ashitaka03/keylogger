@@ -1,10 +1,4 @@
-# Keylogger — Projet éducatif
-
-> ⚠️ Usage strictement personnel sur ta propre machine / VM.
-> Utiliser cet outil sur une machine tierce sans consentement est illégal.
-
 ## Structure
-
 ```
 keylogger/
 ├── core/
